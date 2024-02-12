@@ -9,8 +9,12 @@ int FGE_Main()
     FGE::Window wind= FGE_General_Init();
     
     Tetris::Board board={-boardWidth/2,-boardHeight/2}; 
+    board.Add(Tetris::GenerateBlockTiles(0,0)); 
+    int y=0; 
     FGE_Loop_Start(wind)
-       board.Draw();
+      board.Draw();
+      board.ChangeTopPiece(Tetris::GenerateBlockTiles(0,y));
+      y++;
     FGE_Loop_End(wind)
     
 

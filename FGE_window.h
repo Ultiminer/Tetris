@@ -138,7 +138,7 @@ inline size_t GetFPS()const noexcept
 {
     return 1000/(1+deltaTime); 
 }
-inline bool KeyDown(uint8_t key)
+inline bool KeyDown(long long int key)
 {
     if(sdlEvent->type!=SDL_KEYDOWN)return false;
     return sdlEvent->key.keysym.sym==key;

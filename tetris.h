@@ -7,7 +7,7 @@ constexpr size_t TETRIS_TILES_HIGH{25};
 constexpr float boardWidth{TETRIS_TILE_SIZE*TETRIS_TILES_WIDE};
 constexpr float boardHeight{TETRIS_TILE_SIZE*TETRIS_TILES_HIGH};
 
-
+#define FGE_FAST_VSYNC
 #define FGE_WINDOW_TITLE "TETRIS"
 #define FGE_WINDOW_WIDTH {TETRIS_TILE_SIZE*(TETRIS_TILES_WIDE+8)}
 #define FGE_WINDOW_HEIGHT {TETRIS_TILE_SIZE*(TETRIS_TILES_HIGH+1)}
@@ -55,6 +55,14 @@ struct PieceStructure
     {
         data+=1<<(id+tilesOffset);
     }
+    void unset(size_t id)
+    {
+        NCM_UnSetBit(data,id+tilesOffset);
+    }
+    void unset(size_t x, size_t y)
+    {
+        NCM_UnSetBit(data,x+4*y+tilesOffset);
+    }
     void set(size_t x, size_t y)
     {
         set(x+4*y);
@@ -68,9 +76,10 @@ struct PieceStructure
     {
         return NCM_GetBit(data,tilesOffset+x+4*y);
     }
-    void setPos(unsigned int x,unsigned int y)
+    PieceStructure& setPos( int x, int y)
     {
         data+=x+256*y;
+        return *this;
     }
     unsigned int getX()const
     {
@@ -82,15 +91,22 @@ struct PieceStructure
     }
 };
 
+enum TileType{
+    BLOCK,
+    LINE,
+    SQUIGGLY,
+    L,
+    T
+};
 
 inline PieceStructure GenerateBlockTiles(const unsigned char xPos,const unsigned char yPos)noexcept
 {
     PieceStructure retVal;
     retVal.setPos(xPos,yPos);
+    retVal.set(0,2);
     retVal.set(1,2);
-    retVal.set(2,2);
+    retVal.set(0,3);
     retVal.set(1,3);
-    retVal.set(2,3);
 
     return retVal; 
 }
@@ -109,10 +125,10 @@ inline PieceStructure GenerateLineTiles(const unsigned char xPos,const unsigned 
     return retVal; 
     }
     
-    retVal.set(2,0);
-    retVal.set(2,1);
-    retVal.set(2,2);
-    retVal.set(2,3);
+    retVal.set(0,0);
+    retVal.set(0,1);
+    retVal.set(0,2);
+    retVal.set(0,3);
     
 
     return retVal; 
@@ -244,6 +260,33 @@ inline PieceStructure GenerateTTiles(const unsigned char xPos,const unsigned cha
     return retVal; 
 }
 
+inline PieceStructure GenerateTiles(const unsigned char xPos,const unsigned char yPos,const RotateState& state, const TileType& tileT)
+{
+    switch(tileT)
+    {
+        case TileType::BLOCK:
+        return GenerateBlockTiles(xPos,yPos);
+        break;
+        case TileType::LINE:
+        return GenerateLineTiles(xPos,yPos,state);
+        break;
+        case TileType::SQUIGGLY:
+        return GenerateSquigglyTiles(xPos,yPos,state);
+        break;
+        case TileType::L:
+        return GenerateLTiles(xPos,yPos,state);
+        break;
+        case TileType::T:
+        return GenerateTTiles(xPos,yPos,state);
+        break;
+    }
+
+   return GenerateTTiles(xPos,yPos,state);
+}
+
+struct UPoint{
+size_t x; size_t y;
+};
 struct Board
 {
     const float posX;
@@ -278,7 +321,11 @@ struct Board
     }
     void AddTopPieceY(int y)noexcept
     {
-        pieces.back().setPos(pieces.back().getX(),y);
+        pieces.back().setPos(0,y);
+    }
+    void AddTopPieceX(int x)noexcept
+    {
+        pieces.back().setPos(x,0);
     }
     void ChangeTopPiece(const PieceStructure& structure)noexcept
     {
@@ -297,6 +344,73 @@ struct Board
         }
         FGE_SetColor(lineColor); 
         __FGE_PRIM_RENDER_DRAW_LINES((float*)points.data(),points.size()/2);
+    }
+    int GetTopPieceX()
+    {
+        return pieces.back().getX();
+    }
+    int GetTopPieceY()
+    {
+        return pieces.back().getY();
+    }
+    /*
+    0..no collision
+    1..collision with right side
+    2..collision with floor
+    3..collision with other pieces 
+
+    */
+    int TopPieceCollides()noexcept
+    {
+        const PieceStructure topPiece=pieces.back();
+        
+        std::vector<UPoint> tpTiles;
+        for(size_t j=0; j<16;++j)if(topPiece.isSet(j)){
+            tpTiles.push_back({(topPiece.getX()+j%4),(topPiece.getY()+j/4)});
+            if(tpTiles.back().x>TETRIS_TILES_WIDE-1)return 1;
+        }
+
+        for(size_t i=0; i< pieces.size()-1;++i)
+        for(size_t j=0; j<16;++j)
+        if(pieces.at(i).isSet(j))
+        {
+            const size_t X{pieces.at(i).getX()+j%4}; const size_t Y{pieces.at(i).getY()+j/4};
+            if((X==tpTiles.at(0).x&&Y==tpTiles.at(0).y)||(X==tpTiles.at(1).x&&Y==tpTiles.at(1).y)||(X==tpTiles.at(2).x&&Y==tpTiles.at(2).y)||(X==tpTiles.at(3).x&&Y==tpTiles.at(3).y))
+            {return 3;}
+        }
+        return false; 
+    }
+
+
+    void CheckLineFull()
+    {
+        std::array<size_t,TETRIS_TILES_HIGH+2>numY={0};
+        for(size_t i=0; i< pieces.size()-1;++i)
+        for(size_t j=0; j<16;++j)
+        if(pieces.at(i).isSet(j))
+        {
+            const size_t Y{pieces.at(i).getY()+j/4};
+            numY.at(Y)++;
+        }
+
+        for(size_t y=0;y<=TETRIS_TILES_HIGH;y++)
+        {
+            if(numY[y]==10)
+            {
+                for(size_t i=0; i< pieces.size()-1;++i)
+                {
+                for(size_t j=0; j<16;++j)
+                if(pieces.at(i).isSet(j))
+                {
+                    const size_t Y{pieces.at(i).getY()+j/4};
+                    //std::cout<<y;
+                    if(Y==y)pieces.at(i).unset(j);
+                }
+                if(pieces.at(i).getY()<y)pieces.at(i).setPos(0,1);
+
+                }
+            }
+        }
     }
 };
 

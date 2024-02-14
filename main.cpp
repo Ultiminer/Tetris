@@ -9,29 +9,54 @@ int FGE_Main()
     FGE::Window wind= FGE_General_Init();
     
     Tetris::Board board={-boardWidth/2,-boardHeight/2}; 
-    board.Add(Tetris::GenerateTTiles(0,0,Tetris::RotateState::STATE_3)); 
 
-    unsigned int y=0;
-    int x=0; 
+   
     unsigned int rotState=0;
-
+    unsigned int tileKind=0;
+    board.Add(Tetris::GenerateTiles(0,0,Tetris::RotateState::STATE_3,(Tetris::TileType)tileKind)); 
 
     FGE_Loop_Start(wind)
 
 
     board.Draw();
-    if(wind.KeyDown(SDLK_SPACE)||wind.KeyDown(SDLK_RETURN))rotState++;
-  	if(wind.KeyDown(SDLK_d)||wind.KeyDown(SDLK_RIGHT))x++;
-    if(wind.KeyDown(SDLK_a)||wind.KeyDown(SDLK_LEFT))x--;
 
-    if(x<0)x=0;else
-    if(x>TETRIS_TILES_WIDE-3)x=TETRIS_TILES_WIDE-3;
+    if(wind.KeyDown(SDLK_SPACE)||wind.KeyDown(SDLK_RETURN)){
+      rotState++;
+      board.ChangeTopPiece(Tetris::GenerateTiles(board.GetTopPieceX(),board.GetTopPieceY(),(Tetris::RotateState)(rotState%4),(Tetris::TileType)(tileKind%5)));
+    
+    };
+  	if(wind.KeyDown(SDLK_d)||wind.KeyDown(SDLK_RIGHT)){
+      board.AddTopPieceX(1);
+      if(board.TopPieceCollides()==3)board.AddTopPieceX(-1);
+    };
+    if(board.TopPieceCollides()==1) board.AddTopPieceX(-1);
+    if((wind.KeyDown(SDLK_a)||wind.KeyDown(SDLK_LEFT))&&board.GetTopPieceX()>0){
+      board.AddTopPieceX(-1);
+      if(board.TopPieceCollides()==3)board.AddTopPieceX(1);
+    };
+     
+    
+    
+    
 
-    if(SDL_GetTicks()%30==0){
-    if(y<TETRIS_TILES_HIGH-3)y++;
+    if(SDL_GetTicks()%20==0){
+    board.AddTopPieceY(1);
+
+    if(board.TopPieceCollides()==3){
+      board.AddTopPieceY(-1);
+      tileKind++;
+      board.Add(Tetris::GenerateTiles(0,0,Tetris::RotateState::STATE_3,(Tetris::TileType)(tileKind%5)));
+      board.CheckLineFull();
+    }else
+    if(board.GetTopPieceY()==TETRIS_TILES_HIGH-3)
+    {
+      tileKind++;
+      board.Add(Tetris::GenerateTiles(0,0,Tetris::RotateState::STATE_3,(Tetris::TileType)(tileKind%5)));
+      board.CheckLineFull();
     }
-    board.ChangeTopPiece(Tetris::GenerateTTiles(x,y,(Tetris::RotateState)(rotState%4)));
-
+    
+    }
+    
 
     FGE_Loop_End(wind)
     

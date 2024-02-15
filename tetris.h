@@ -299,7 +299,8 @@ struct Board
 
     std::vector<float> points; 
     FGE::SRect rect; 
-    std::vector<PieceStructure>pieces;
+    std::array<bool,TETRIS_TILES_WIDE*TETRIS_TILES_HIGH> pieces; 
+    PieceStructure topPiece;
     Board(float PosX,float PosY):posX(PosX),posY(PosY)
     {
         points.reserve(TETRIS_TILE_SIZE*4);
@@ -317,41 +318,53 @@ struct Board
     }
     inline void Add(const PieceStructure& structure)noexcept
     {
-        pieces.push_back(structure);
+        for(size_t i=0; i<16;++i)
+        {
+           if(topPiece.isSet(i))
+           pieces.at(i)=true;
+        }
+        topPiece.data=structure.data;
     }
     void AddTopPieceY(int y)noexcept
     {
-        pieces.back().setPos(0,y);
+        topPiece.setPos(0,y);
     }
     void AddTopPieceX(int x)noexcept
     {
-        pieces.back().setPos(x,0);
+        topPiece.setPos(x,0);
     }
     void ChangeTopPiece(const PieceStructure& structure)noexcept
     {
-        pieces.back().data=structure.data;
+        topPiece.data=structure.data;
     }
     inline void Draw()noexcept
     {   
         rect.Draw(bgColor).DrawBorder(lineColor);
-        for(auto& el: pieces)for(size_t i=0; i<16;++i)
-        if(el.isSet(i))
+        for(size_t i=0; i<16;++i)
+        if(topPiece.isSet(i))
         {
-            float tPosY{posY+boardHeight-el.getY()*TETRIS_TILE_SIZE-((int)(i/4))*TETRIS_TILE_SIZE+TETRIS_TILE_SIZE/2};
-            FGE::SRect rect={posX+el.getX()*TETRIS_TILE_SIZE+(i%4)*TETRIS_TILE_SIZE+TETRIS_TILE_SIZE/2,tPosY,TETRIS_TILE_SIZE/2,TETRIS_TILE_SIZE/2}; 
+            float tPosY{posY+boardHeight-topPiece.getY()*TETRIS_TILE_SIZE-((int)(i/4))*TETRIS_TILE_SIZE+TETRIS_TILE_SIZE/2};
+            FGE::SRect rect={posX+topPiece.getX()*TETRIS_TILE_SIZE+(i%4)*TETRIS_TILE_SIZE+TETRIS_TILE_SIZE/2,tPosY,TETRIS_TILE_SIZE/2,TETRIS_TILE_SIZE/2}; 
             //std::cout<<"x: "<<el.getX()<<"y: "<<el.getY()<<std::endl;
             rect.UpdateShape().Draw(pieceColor);
         }
+        for(size_t i=0; i<TETRIS_TILES_HIGH*TETRIS_TILES_HIGH;++i)
+        if(pieces.at(i))
+        {
+            FGE::SRect rect={posX+(i%TETRIS_TILES_WIDE)*TETRIS_TILE_SIZE,posY+(i/TETRIS_TILES_WIDE)*TETRIS_TILE_SIZE,TETRIS_TILE_SIZE,TETRIS_TILE_SIZE};
+            rect.UpdateShape().Draw(pieceColor);
+        }
+
         FGE_SetColor(lineColor); 
         __FGE_PRIM_RENDER_DRAW_LINES((float*)points.data(),points.size()/2);
     }
     int GetTopPieceX()
     {
-        return pieces.back().getX();
+        return topPiece.getX();
     }
     int GetTopPieceY()
     {
-        return pieces.back().getY();
+        return topPiece.getY();
     }
     /*
     0..no collision
@@ -362,32 +375,30 @@ struct Board
     */
     int TopPieceCollides()noexcept
     {
-        const PieceStructure topPiece=pieces.back();
-        
         std::vector<UPoint> tpTiles;
         for(size_t j=0; j<16;++j)if(topPiece.isSet(j)){
             tpTiles.push_back({(topPiece.getX()+j%4),(topPiece.getY()+j/4)});
             if(tpTiles.back().x>TETRIS_TILES_WIDE-1)return 1;
         }
 
-        for(size_t i=0; i< pieces.size()-1;++i)
+       /* for(size_t i=0; i< pieces.size()-1;++i)
         for(size_t j=0; j<16;++j)
         if(pieces.at(i).isSet(j))
         {
             const size_t X{pieces.at(i).getX()+j%4}; const size_t Y{pieces.at(i).getY()+j/4};
             if((X==tpTiles.at(0).x&&Y==tpTiles.at(0).y)||(X==tpTiles.at(1).x&&Y==tpTiles.at(1).y)||(X==tpTiles.at(2).x&&Y==tpTiles.at(2).y)||(X==tpTiles.at(3).x&&Y==tpTiles.at(3).y))
             {return 3;}
-        }
+        }*/
         return false; 
     }
 
 
     void CheckLineFull()
     {
-        std::array<size_t,TETRIS_TILES_HIGH+2>numY={0};
+       /* std::array<size_t,TETRIS_TILES_HIGH+2>numY={0};
         for(size_t i=0; i< pieces.size()-1;++i)
         for(size_t j=0; j<16;++j)
-        if(pieces.at(i).isSet(j))
+       if(pieces.at(i).isSet(j))
         {
             const size_t Y{pieces.at(i).getY()+j/4};
             numY.at(Y)++;
@@ -399,18 +410,23 @@ struct Board
             {
                 for(size_t i=0; i< pieces.size()-1;++i)
                 {
-                for(size_t j=0; j<16;++j)
-                if(pieces.at(i).isSet(j))
-                {
+                 for(size_t j=0; j<16;++j)
+                 if(pieces.at(i).isSet(j))
+                 {
                     const size_t Y{pieces.at(i).getY()+j/4};
                     //std::cout<<y;
                     if(Y==y)pieces.at(i).unset(j);
-                }
-                if(pieces.at(i).getY()<y)pieces.at(i).setPos(0,1);
-
+                   
+                 }
+                 for(size_t j=0; j<16;++j)
+                 if(pieces.at(i).isSet(j))
+                 {
+                    const size_t Y{pieces.at(i).getY()+j/4};
+                    if(Y<y)pieces.at(i).setPos(0,1);
+                 }
                 }
             }
-        }
+        }*/
     }
 };
 

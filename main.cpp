@@ -25,7 +25,11 @@ int FGE_Main()
     if(wind.KeyDown(SDLK_SPACE)||wind.KeyDown(SDLK_RETURN)){
       rotState++;
       board.ChangeTopPiece(Tetris::GenerateTiles(board.GetTopPieceX(),board.GetTopPieceY(),(Tetris::RotateState)(rotState%4),(Tetris::TileType)(tileKind%5)));
-    
+      if(board.TopPieceCollides()>0)
+      {
+      rotState--;
+      board.ChangeTopPiece(Tetris::GenerateTiles(board.GetTopPieceX(),board.GetTopPieceY(),(Tetris::RotateState)(rotState%4),(Tetris::TileType)(tileKind%5)));
+      }
     };
   	if(wind.KeyDown(SDLK_d)||wind.KeyDown(SDLK_RIGHT)){
       board.AddTopPieceX(1);

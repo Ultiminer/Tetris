@@ -15,9 +15,10 @@ int FGE_Main()
     size_t currentTicks;
     unsigned int rotState=0;
     unsigned int tileKind=random.int_rand(4);
-    board.Add(Tetris::GenerateTiles(0,0,Tetris::RotateState::STATE_3,(Tetris::TileType)tileKind)); 
+    unsigned int spawnX=random.int_rand(TETRIS_TILES_WIDE);
+    board.Add(Tetris::GenerateTiles(spawnX,0,Tetris::RotateState::STATE_3,(Tetris::TileType)tileKind)); 
 
-    FGE_Loop_Start(wind)
+    FGE_Loop_Start(wind);
 
     board.Draw();
 
@@ -44,9 +45,6 @@ int FGE_Main()
 
     }
      
-    
-    
-
     if(currentTicks+deltaTime<SDL_GetTicks()){
       currentTicks=SDL_GetTicks();
     board.AddTopPieceY(1);
@@ -54,7 +52,8 @@ int FGE_Main()
     if(board.TopPieceCollides()==3){
       board.AddTopPieceY(-1);
       tileKind++;
-      board.Add(Tetris::GenerateTiles(0,0,Tetris::RotateState::STATE_3,(Tetris::TileType)(tileKind%5)));
+      spawnX=random.int_rand(TETRIS_TILES_WIDE);
+      board.Add(Tetris::GenerateTiles(spawnX,0,Tetris::RotateState::STATE_3,(Tetris::TileType)(tileKind%5)));
       if(board.CheckLineFull())
       deltaTime--;
       
@@ -62,7 +61,8 @@ int FGE_Main()
     if(board.GetTopPieceY()==TETRIS_TILES_HIGH-3)
     {
       tileKind++;
-      board.Add(Tetris::GenerateTiles(0,0,Tetris::RotateState::STATE_3,(Tetris::TileType)(tileKind%5)));
+      spawnX=random.int_rand(TETRIS_TILES_WIDE);
+      board.Add(Tetris::GenerateTiles(spawnX,0,Tetris::RotateState::STATE_3,(Tetris::TileType)(tileKind%5)));
       if(board.CheckLineFull())
       deltaTime--;
     }
@@ -70,7 +70,7 @@ int FGE_Main()
     }
     
 
-    FGE_Loop_End(wind)
+    FGE_Loop_End(wind);
     
 
     FGE_Return();

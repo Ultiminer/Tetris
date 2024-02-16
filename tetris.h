@@ -2,8 +2,8 @@
 #define TETRIS_H_
 
 constexpr size_t TETRIS_TILE_SIZE{30};
-constexpr size_t TETRIS_TILES_WIDE{10};
-constexpr size_t TETRIS_TILES_HIGH{25};
+constexpr unsigned char TETRIS_TILES_WIDE{10};
+constexpr unsigned char TETRIS_TILES_HIGH{25};
 constexpr float boardWidth{TETRIS_TILE_SIZE*TETRIS_TILES_WIDE};
 constexpr float boardHeight{TETRIS_TILE_SIZE*TETRIS_TILES_HIGH};
 
@@ -301,6 +301,7 @@ struct Board
     FGE_Color bgColor=FGE::black; 
     FGE_Color lineColor=FGE::white; 
     FGE_Color pieceColor=FGE::greenyellow; 
+    FGE_Color topPieceColor=FGE::orange; 
 
     std::vector<float> points; 
     FGE::SRect boardRect; 
@@ -351,7 +352,7 @@ struct Board
             float tPosY{posY+boardHeight-topPiece.getY()*TETRIS_TILE_SIZE-((int)(i/4))*TETRIS_TILE_SIZE+TETRIS_TILE_SIZE/2};
             FGE::SRect topRect={posX+topPiece.getX()*TETRIS_TILE_SIZE+(i%4)*TETRIS_TILE_SIZE+TETRIS_TILE_SIZE/2,tPosY,TETRIS_TILE_SIZE/2,TETRIS_TILE_SIZE/2}; 
             //std::cout<<"x: "<<el.getX()<<"y: "<<el.getY()<<std::endl;
-            topRect.UpdateShape().Draw(pieceColor);
+            topRect.UpdateShape().Draw(topPieceColor);
         }
         for(auto& el: pieces){
         FGE::SRect pieceRect={posX+el.x*(TETRIS_TILE_SIZE)+TETRIS_TILE_SIZE/2,posY+boardHeight-((el.y)*(TETRIS_TILE_SIZE)-TETRIS_TILE_SIZE/2),TETRIS_TILE_SIZE/2,TETRIS_TILE_SIZE/2};
@@ -397,17 +398,21 @@ struct Board
     }
 
 
-    void CheckLineFull()
+    bool CheckLineFull()
     {
-       std::array<size_t,TETRIS_TILES_HIGH+2>numY={0};
+        bool retVal=false;
+       std::array<char,TETRIS_TILES_HIGH+2>numY={0};
        for(auto& el:pieces)numY.at(el.y)++;
 
-       for(size_t y=0;y<=TETRIS_TILES_HIGH;y++)
-       if(numY[y]==TETRIS_TILES_WIDE)
-       for(size_t i=0; i<pieces.size();++i)
-       if(pieces.at(i).y==y){pieces.erase(pieces.begin()+i);i--;}
-        else if (pieces.at(i).y<y)pieces.at(i).y++;
-        
+       for(char y=0;y<=TETRIS_TILES_HIGH;y++)
+       if(numY[y]==TETRIS_TILES_WIDE){
+            retVal=true;
+         for(size_t i=0; i<pieces.size();++i)
+         if(pieces.at(i).y==y){pieces.erase(pieces.begin()+i);i--;}
+         else if (pieces.at(i).y<y)pieces.at(i).y++;
+        }
+
+        return retVal;
     }
 };
 

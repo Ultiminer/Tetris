@@ -10,13 +10,13 @@ int FGE_Main()
     
     Tetris::Board board={-boardWidth/2,-boardHeight/2}; 
 
-   
+    size_t deltaTime=150;
+    size_t currentTicks;
     unsigned int rotState=0;
     unsigned int tileKind=0;
     board.Add(Tetris::GenerateTiles(0,0,Tetris::RotateState::STATE_3,(Tetris::TileType)tileKind)); 
 
     FGE_Loop_Start(wind)
-
 
     board.Draw();
 
@@ -37,22 +37,25 @@ int FGE_Main()
      
     
     
-    
 
-    if(SDL_GetTicks()%20==0){
+    if(currentTicks+deltaTime<SDL_GetTicks()){
+      currentTicks=SDL_GetTicks();
     board.AddTopPieceY(1);
 
     if(board.TopPieceCollides()==3){
       board.AddTopPieceY(-1);
       tileKind++;
       board.Add(Tetris::GenerateTiles(0,0,Tetris::RotateState::STATE_3,(Tetris::TileType)(tileKind%5)));
-      board.CheckLineFull();
+      if(board.CheckLineFull())
+      deltaTime--;
+      
     }else
     if(board.GetTopPieceY()==TETRIS_TILES_HIGH-3)
     {
       tileKind++;
       board.Add(Tetris::GenerateTiles(0,0,Tetris::RotateState::STATE_3,(Tetris::TileType)(tileKind%5)));
-      board.CheckLineFull();
+      if(board.CheckLineFull())
+      deltaTime--;
     }
     
     }

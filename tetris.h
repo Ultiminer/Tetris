@@ -37,42 +37,42 @@ enum RotateState{
 struct PieceStructure
 {
     TETRIS_DATA data=0;
-    const size_t tilesOffset=16;
+    const unsigned char tilesOffset=16;
 
-    constexpr size_t size()const
+    constexpr unsigned char size()const
     {
         return 16;
     }
-    constexpr size_t width()const
+    constexpr unsigned char width()const
     {
         return 4;
     }
-    constexpr size_t height()const
+    constexpr unsigned char height()const
     {
         return 4;
     }
-    void set(size_t id)
+    void set(unsigned char id)
     {
         data+=1<<(id+tilesOffset);
     }
-    void unset(size_t id)
+    void unset(unsigned char id)
     {
         NCM_UnSetBit(data,id+tilesOffset);
     }
-    void unset(size_t x, size_t y)
+    void unset(char x, char y)
     {
         NCM_UnSetBit(data,x+4*y+tilesOffset);
     }
-    void set(size_t x, size_t y)
+    void set(char x, char y)
     {
         set(x+4*y);
     }
    
-    bool isSet(size_t id)const
+    bool isSet(unsigned char id)const
     {
         return  NCM_GetBit(data,tilesOffset+id); 
     }
-    bool isSet(size_t x, size_t y)
+    bool isSet(char x, char y)
     {
         return NCM_GetBit(data,tilesOffset+x+4*y);
     }
@@ -81,11 +81,11 @@ struct PieceStructure
         data+=x+256*y;
         return *this;
     }
-    unsigned int getX()const
+    unsigned char getX()const
     {
        return data&0xFF;
     }
-    unsigned int getY()const
+    unsigned char getY()const
     {
         return (data&0xFF00)>>8;
     }
@@ -287,6 +287,11 @@ inline PieceStructure GenerateTiles(const unsigned char xPos,const unsigned char
 struct UPoint{
 size_t x; size_t y;
 };
+struct CPoint
+{
+    char x; char y; 
+};
+
 struct Board
 {
     const float posX;
@@ -298,8 +303,8 @@ struct Board
     FGE_Color pieceColor=FGE::greenyellow; 
 
     std::vector<float> points; 
-    FGE::SRect rect; 
-    std::array<bool,TETRIS_TILES_WIDE*TETRIS_TILES_HIGH> pieces; 
+    FGE::SRect boardRect; 
+    std::vector<CPoint> pieces; 
     PieceStructure topPiece;
     Board(float PosX,float PosY):posX(PosX),posY(PosY)
     {
@@ -314,14 +319,14 @@ struct Board
             points.push_back(posX);points.push_back(posY+y);
             points.push_back(posX+boardWidth);points.push_back(posY+y);
         }
-        rect.SetXM(posX+(TETRIS_TILE_SIZE*(TETRIS_TILES_WIDE))/2).SetYM(posY+(TETRIS_TILE_SIZE*(TETRIS_TILES_HIGH))/2).SetW2(TETRIS_TILE_SIZE*TETRIS_TILES_WIDE/2).SetH2(TETRIS_TILE_SIZE*TETRIS_TILES_HIGH/2).UpdateShape();
+        boardRect.SetXM(posX+(TETRIS_TILE_SIZE*(TETRIS_TILES_WIDE))/2).SetYM(posY+(TETRIS_TILE_SIZE*(TETRIS_TILES_HIGH))/2).SetW2(TETRIS_TILE_SIZE*TETRIS_TILES_WIDE/2).SetH2(TETRIS_TILE_SIZE*TETRIS_TILES_HIGH/2).UpdateShape();
     }
     inline void Add(const PieceStructure& structure)noexcept
     {
-        for(size_t i=0; i<16;++i)
+        for(unsigned char i=0; i<16;++i)
         {
            if(topPiece.isSet(i))
-           pieces.at(i)=true;
+           pieces.push_back({(char)(topPiece.getX()+(i%4)),(char)(topPiece.getY()+i/4)});
         }
         topPiece.data=structure.data;
     }
@@ -339,21 +344,20 @@ struct Board
     }
     inline void Draw()noexcept
     {   
-        rect.Draw(bgColor).DrawBorder(lineColor);
+        boardRect.Draw(bgColor).DrawBorder(lineColor);
         for(size_t i=0; i<16;++i)
         if(topPiece.isSet(i))
         {
             float tPosY{posY+boardHeight-topPiece.getY()*TETRIS_TILE_SIZE-((int)(i/4))*TETRIS_TILE_SIZE+TETRIS_TILE_SIZE/2};
-            FGE::SRect rect={posX+topPiece.getX()*TETRIS_TILE_SIZE+(i%4)*TETRIS_TILE_SIZE+TETRIS_TILE_SIZE/2,tPosY,TETRIS_TILE_SIZE/2,TETRIS_TILE_SIZE/2}; 
+            FGE::SRect topRect={posX+topPiece.getX()*TETRIS_TILE_SIZE+(i%4)*TETRIS_TILE_SIZE+TETRIS_TILE_SIZE/2,tPosY,TETRIS_TILE_SIZE/2,TETRIS_TILE_SIZE/2}; 
             //std::cout<<"x: "<<el.getX()<<"y: "<<el.getY()<<std::endl;
-            rect.UpdateShape().Draw(pieceColor);
+            topRect.UpdateShape().Draw(pieceColor);
         }
-        for(size_t i=0; i<TETRIS_TILES_HIGH*TETRIS_TILES_HIGH;++i)
-        if(pieces.at(i))
-        {
-            FGE::SRect rect={posX+(i%TETRIS_TILES_WIDE)*TETRIS_TILE_SIZE,posY+(i/TETRIS_TILES_WIDE)*TETRIS_TILE_SIZE,TETRIS_TILE_SIZE,TETRIS_TILE_SIZE};
-            rect.UpdateShape().Draw(pieceColor);
+        for(auto& el: pieces){
+        FGE::SRect pieceRect={posX+el.x*(TETRIS_TILE_SIZE)+TETRIS_TILE_SIZE/2,posY+boardHeight-((el.y)*(TETRIS_TILE_SIZE)-TETRIS_TILE_SIZE/2),TETRIS_TILE_SIZE/2,TETRIS_TILE_SIZE/2};
+        pieceRect.UpdateShape().Draw(pieceColor);
         }
+        
 
         FGE_SetColor(lineColor); 
         __FGE_PRIM_RENDER_DRAW_LINES((float*)points.data(),points.size()/2);
@@ -375,58 +379,35 @@ struct Board
     */
     int TopPieceCollides()noexcept
     {
-        std::vector<UPoint> tpTiles;
+        std::vector<CPoint> tpTiles;
         for(size_t j=0; j<16;++j)if(topPiece.isSet(j)){
-            tpTiles.push_back({(topPiece.getX()+j%4),(topPiece.getY()+j/4)});
-            if(tpTiles.back().x>TETRIS_TILES_WIDE-1)return 1;
+            tpTiles.push_back({(char)(topPiece.getX()+j%4),(char)(topPiece.getY()+j/4)});
+            if(tpTiles.back().x>(char)(TETRIS_TILES_WIDE-1))return 1;
         }
 
-       /* for(size_t i=0; i< pieces.size()-1;++i)
-        for(size_t j=0; j<16;++j)
-        if(pieces.at(i).isSet(j))
+        for(auto& el:pieces)
         {
-            const size_t X{pieces.at(i).getX()+j%4}; const size_t Y{pieces.at(i).getY()+j/4};
-            if((X==tpTiles.at(0).x&&Y==tpTiles.at(0).y)||(X==tpTiles.at(1).x&&Y==tpTiles.at(1).y)||(X==tpTiles.at(2).x&&Y==tpTiles.at(2).y)||(X==tpTiles.at(3).x&&Y==tpTiles.at(3).y))
+            if((el.x==tpTiles.at(0).x&&el.y==tpTiles.at(0).y)||
+            (el.x==tpTiles.at(1).x&&el.y==tpTiles.at(1).y)||
+            (el.x==tpTiles.at(2).x&&el.y==tpTiles.at(2).y)||
+            (el.x==tpTiles.at(3).x&&el.y==tpTiles.at(3).y))
             {return 3;}
-        }*/
+        }
         return false; 
     }
 
 
     void CheckLineFull()
     {
-       /* std::array<size_t,TETRIS_TILES_HIGH+2>numY={0};
-        for(size_t i=0; i< pieces.size()-1;++i)
-        for(size_t j=0; j<16;++j)
-       if(pieces.at(i).isSet(j))
-        {
-            const size_t Y{pieces.at(i).getY()+j/4};
-            numY.at(Y)++;
-        }
+       std::array<size_t,TETRIS_TILES_HIGH+2>numY={0};
+       for(auto& el:pieces)numY.at(el.y)++;
 
-        for(size_t y=0;y<=TETRIS_TILES_HIGH;y++)
-        {
-            if(numY[y]==10)
-            {
-                for(size_t i=0; i< pieces.size()-1;++i)
-                {
-                 for(size_t j=0; j<16;++j)
-                 if(pieces.at(i).isSet(j))
-                 {
-                    const size_t Y{pieces.at(i).getY()+j/4};
-                    //std::cout<<y;
-                    if(Y==y)pieces.at(i).unset(j);
-                   
-                 }
-                 for(size_t j=0; j<16;++j)
-                 if(pieces.at(i).isSet(j))
-                 {
-                    const size_t Y{pieces.at(i).getY()+j/4};
-                    if(Y<y)pieces.at(i).setPos(0,1);
-                 }
-                }
-            }
-        }*/
+       for(size_t y=0;y<=TETRIS_TILES_HIGH;y++)
+       if(numY[y]==TETRIS_TILES_WIDE)
+       for(size_t i=0; i<pieces.size();++i)
+       if(pieces.at(i).y==y){pieces.erase(pieces.begin()+i);i--;}
+        else if (pieces.at(i).y<y)pieces.at(i).y++;
+        
     }
 };
 

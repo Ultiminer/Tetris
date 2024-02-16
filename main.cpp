@@ -2,6 +2,7 @@
 #include "tetris.h"
 #include "math.h"
 //This library can be super extended with any kind of SDL, SDL2, or OpenGL functionality 
+#include "FGE_random.h"
 int FGE_Main()
 {
     BUILD_ALL_TARGETS;
@@ -13,7 +14,7 @@ int FGE_Main()
     size_t deltaTime=150;
     size_t currentTicks;
     unsigned int rotState=0;
-    unsigned int tileKind=0;
+    unsigned int tileKind=random.int_rand(4);
     board.Add(Tetris::GenerateTiles(0,0,Tetris::RotateState::STATE_3,(Tetris::TileType)tileKind)); 
 
     FGE_Loop_Start(wind)

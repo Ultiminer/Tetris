@@ -34,6 +34,14 @@ int FGE_Main()
       board.AddTopPieceX(-1);
       if(board.TopPieceCollides()==3)board.AddTopPieceX(1);
     };
+    if((wind.KeyDown(SDLK_DOWN)||wind.KeyDown(SDLK_s))&&board.GetTopPieceY()<TETRIS_TILES_HIGH-4)
+    {
+      if(board.TopPieceCollides()==0){
+        board.AddTopPieceY(1);
+        if(board.TopPieceCollides()>0)board.AddTopPieceY(-1);
+      }
+
+    }
      
     
     
